@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<title>fluentd Performance Timing API</title>
+	<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+	<div class="container" style="margin-top:50px;">
+		<div class="row">
+			<div class="col-sm-4">
+				<button id="reloadButton" class="btn btn-default btn-primary btn-lg">Reload</button>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-sm-4" style="margin-top:10px;">
+				<span id="statusBadge" class="badge"></span>
+			</div>
+
+		</div>
+		<div class="row">
+			<div class="col-sm-12">
+				<hr />
+				<p>On page load a post is made to <i>/perf</i> with the data from <i>window.performance.timing</i>.The express app logs the request to the fluentd-leaf server which forwards it to the fluentd aggregator which stores it in the influxdb</p>
+				<p>Records end up in series <strong>perf.<i>hostname</i>.timing</strong> in database performance_log
+				<a href="http://127.0.0.1:8083/" target="_blank" >Influxdb Admin Page</a>
+				<p>Reload to send more data</p>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-sm-12">
+				<hr />
+				<h2>Performance Timing API</h2>
+				<table id="timingList" class="table"></table>
+			</div>
+		</div>
+	</div>
+	<script src="//code.jquery.com/jquery-2.1.3.min.js"></script>
+	<script>
+		$(document).ready(function () {
+			$("#reloadButton").click(function () {
+				window.location.reload();
+			});
+
+			var timingData = window.performance.timing;
+
+			var table = $('#timingList');
+			for (var key in timingData) {
+				if (timingData.hasOwnProperty(key)) {
+					var val = timingData[key];
+					table.append('<tr><td><b>' + key + '</b></td><td><i id="' + key + '">' + val + '</i></td></tr>');
+				}
+			}
+			var timingDataString = window.performance.timing;
+			$('#statusBadge').text('Sending...').addClass('alert-info');
+			$.ajax({
+				url: '/perf',
+				type: 'POST',
+				data: timingDataString,
+				cache: false,
+			}).done(function (response) {
+				$('#statusBadge').text('Logging Success').removeClass('alert-info').addClass('alert-success');
+			}).fail(function (response) {
+				$('#statusBadge').text('Failed ' + response.statusText).removeClass('alert-info').addClass('alert-danger');
+			});
+		});
+	</script>
+</body>
+</html>
